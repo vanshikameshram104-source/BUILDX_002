@@ -1,5 +1,5 @@
 export type UserRole = 'citizen' | 'family' | 'volunteer' | 'police' | 'admin';
-export type AppView = 'landing' | 'citizen' | 'family' | 'volunteer' | 'police' | 'control_room';
+export type AppView = 'landing' | 'citizen' | 'family' | 'volunteer' | 'police' | 'control_room' | 'challenges';
 
 export interface User {
   id: string;
@@ -162,4 +162,23 @@ export interface NotificationItem {
   timestamp: string;
   read: boolean;
   relatedId?: string;
+}
+
+export type ChallengeSeverity = 'CRITICAL' | 'HIGH';
+export type ChallengeStage = 'DETECT' | 'ANALYZE' | 'RESPOND' | 'CONTAIN' | 'RECOVER' | 'VERIFY';
+
+export interface SecurityChallenge {
+  id: string;
+  scenarioNumber: string;
+  title: string;
+  severity: ChallengeSeverity;
+  shortDescription: string;
+  requirements: string;
+  iconName: 'attack' | 'zerotrust' | 'infrastructure' | 'ddos';
+  problemStatement: string;
+  requiredCapabilities: string[];
+  detectionProcess: string[];
+  responseProcess: string[];
+  recoveryProcess: string[];
+  successCriteria: string[];
 }

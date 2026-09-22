@@ -5,10 +5,11 @@ import { AIMissingPersonMatcher } from './AIMissingPersonMatcher';
 import { AICrowdMonitor } from './AICrowdMonitor';
 import { EmergencyBroadcastModal } from './EmergencyBroadcastModal';
 import { DatabaseManagerView } from './DatabaseManagerView';
+import { CurrentChallengeCard } from '../challenges/CurrentChallengeCard';
 import { Incident, MissingPerson, IncidentPriority, IncidentStatus } from '../../types';
 import { 
   Radio, CheckCircle2, X, ChevronRight, 
-  Search, Sparkles, ShieldAlert, UserCheck
+  Search, Sparkles, ShieldAlert, UserCheck, Shield
 } from 'lucide-react';
 
 export const ControlRoomView: React.FC = () => {
@@ -23,6 +24,7 @@ export const ControlRoomView: React.FC = () => {
     assignResponder,
     approveCrowdRecommendation,
     broadcastAlert,
+    navigateTo,
     darkMode 
   } = useApp();
 
