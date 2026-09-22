@@ -1,12 +1,18 @@
 import React, { useState, useEffect } from 'react';
 import { useApp } from '../../context/AppContext';
 import { safenetDB, DBTransactionLog, SafeNetStoreName } from '../../services/db/safenetDB';
-import { getStoredFirebaseConfig, saveFirebaseConfig, FirebaseConfig } from '../../services/db/firebaseConfig';
 import { 
-  Database, HardDrive, Cloud, RefreshCw, Download, Upload, 
-  Trash2, CheckCircle2, AlertTriangle, ShieldCheck, Cpu, Search, 
-  Table, FileJson, Server, Activity, ArrowUpRight, Zap, Layers, 
-  Lock, Eye, X, ShieldAlert, Check
+  getStoredSupabaseConfig, 
+  saveStoredSupabaseConfig, 
+  testSupabaseConnection, 
+  SupabaseConfig 
+} from '../../services/db/supabaseClient';
+import { SUPABASE_POSTGRES_SCHEMA } from '../../services/db/supabaseSchemaText';
+import { 
+  Database, Cloud, RefreshCw, Download, Upload, 
+  Trash2, CheckCircle2, AlertTriangle, ShieldCheck, Search, 
+  FileJson, Server, Activity, Zap, Layers, 
+  Eye, X, Copy, CheckCheck, Code, Check
 } from 'lucide-react';
 
 type StoreName = SafeNetStoreName;
@@ -16,6 +22,7 @@ interface StoreMeta {
   label: string;
   description: string;
   keyPath: string;
+  pgType: string;
   indexes: string[];
 }
 
@@ -23,8 +30,9 @@ const SECTION_26_STORES: StoreMeta[] = [
   {
     name: 'users',
     label: 'USERS',
-    description: 'Citizen, Volunteer, Police, and Admin accounts with roles and encrypted credentials',
+    description: 'Citizen, Volunteer, Police, and Admin accounts with roles and credentials',
     keyPath: 'id',
+    pgType: 'public.users (PostgreSQL Table)',
     indexes: ['by-role', 'by-email']
   },
   {
@@ -32,6 +40,7 @@ const SECTION_26_STORES: StoreMeta[] = [
     label: 'INCIDENTS',
     description: 'Active emergency dispatches, crowd surges, medical calls, and field status',
     keyPath: 'id',
+    pgType: 'public.incidents (PostgreSQL Table)',
     indexes: ['by-status', 'by-priority', 'by-reporter', 'by-category']
   },
   {
@@ -39,6 +48,7 @@ const SECTION_26_STORES: StoreMeta[] = [
     label: 'MISSING_PERSONS',
     description: 'Lost child and elderly cases with biometric vectors and CCTV match records',
     keyPath: 'id',
+    pgType: 'public.missing_persons (PostgreSQL Table)',
     indexes: ['by-status', 'by-type', 'by-reporter']
   },
   {
@@ -46,6 +56,7 @@ const SECTION_26_STORES: StoreMeta[] = [
     label: 'RESPONDERS',
     description: 'Tactical police units, volunteer marshals, duty statuses, and sector allocations',
     keyPath: 'id',
+    pgType: 'public.responders (PostgreSQL Table)',
     indexes: ['by-role', 'by-availability', 'by-zone']
   },
   {
@@ -53,6 +64,7 @@ const SECTION_26_STORES: StoreMeta[] = [
     label: 'ALERTS',
     description: 'Zone-targeted emergency broadcasts, evacuation notices, and mass SMS alerts',
     keyPath: 'id',
+    pgType: 'public.alerts (PostgreSQL Table)',
     indexes: ['by-priority', 'by-type', 'by-zone']
   },
   {
@@ -60,6 +72,7 @@ const SECTION_26_STORES: StoreMeta[] = [
     label: 'CROWD_ZONES',
     description: 'Deekshabhoomi monitoring zones with live sensor density and bottleneck risks',
     keyPath: 'id',
+    pgType: 'public.crowd_zones (PostgreSQL Table)',
     indexes: ['by-risk']
   },
   {
@@ -67,6 +80,7 @@ const SECTION_26_STORES: StoreMeta[] = [
     label: 'SAFETY_JOURNEYS',
     description: 'Solo attendee route tracking, checkpoint pings, and deviation triggers',
     keyPath: 'id',
+    pgType: 'public.safety_journeys (PostgreSQL Table)',
     indexes: ['by-user', 'by-status']
   }
 ];
@@ -76,7 +90,9 @@ export const DatabaseManagerView: React.FC = () => {
     darkMode, 
     exportDatabaseBackup, 
     importDatabaseBackup, 
-    resetToDemoData 
+    resetToDemoData,
+    isSupabaseConnected,
+    reconnectSupabase
   } = useApp();
 
   const [selectedStore, setSelectedStore] = useState<StoreName>('incidents');
@@ -94,12 +110,17 @@ export const DatabaseManagerView: React.FC = () => {
   const [searchQuery, setSearchQuery] = useState('');
   const [viewingRecord, setViewingRecord] = useState<Record<string, unknown> | null>(null);
   const [transactionLogs, setTransactionLogs] = useState<DBTransactionLog[]>([]);
-  const [storageEstimate, setStorageEstimate] = useState<{ usage: string; quota: string }>({ usage: '1.2 MB', quota: 'Unlimited' });
+  const [storageEstimate, setStorageEstimate] = useState<{ usage: string; quota: string }>({ usage: '1.4 MB', quota: 'Unlimited' });
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [actionNotice, setActionNotice] = useState<{ type: 'success' | 'error'; message: string } | null>(null);
-  const [showFirebaseConfig, setShowFirebaseConfig] = useState(false);
-  const [firebaseSettings, setFirebaseSettings] = useState<FirebaseConfig>(getStoredFirebaseConfig());
-  const [cloudTestStatus, setCloudTestStatus] = useState<'idle' | 'testing' | 'success'>('idle');
+
+  // Supabase / Neon Cloud settings
+  const [showSupabasePanel, setShowSupabasePanel] = useState(false);
+  const [supabaseSettings, setSupabaseSettings] = useState<SupabaseConfig>(getStoredSupabaseConfig());
+  const [supabaseTestStatus, setSupabaseTestStatus] = useState<'idle' | 'testing' | 'success' | 'error'>('idle');
+  const [supabaseTestFeedback, setSupabaseTestFeedback] = useState<string>('');
+  const [copiedSchema, setCopiedSchema] = useState(false);
+  const [showSchemaModal, setShowSchemaModal] = useState(false);
 
   // Load record counts & active store data
   const loadDatabaseData = async () => {
@@ -183,7 +204,7 @@ export const DatabaseManagerView: React.FC = () => {
         message: 'Database backup downloaded successfully.'
       });
       setTimeout(() => setActionNotice(null), 4000);
-    } catch (err) {
+    } catch {
       setActionNotice({
         type: 'error',
         message: 'Failed to export database backup.'
@@ -213,7 +234,7 @@ export const DatabaseManagerView: React.FC = () => {
             message: 'Invalid backup file format or incompatible schema.'
           });
         }
-      } catch (err) {
+      } catch {
         setActionNotice({
           type: 'error',
           message: 'Error parsing backup file.'
@@ -249,24 +270,48 @@ export const DatabaseManagerView: React.FC = () => {
     }
   };
 
-  // Save Cloud Firebase Configuration
-  const handleSaveFirebase = (e: React.FormEvent) => {
+  // Save Supabase Configuration & Reconnect
+  const handleSaveSupabase = async (e: React.FormEvent) => {
     e.preventDefault();
-    saveFirebaseConfig(firebaseSettings);
+    saveStoredSupabaseConfig(supabaseSettings);
+    const connected = await reconnectSupabase();
     setActionNotice({
-      type: 'success',
-      message: 'Cloud Firebase configuration saved.'
+      type: connected ? 'success' : 'error',
+      message: connected 
+        ? 'Supabase PostgreSQL connected! Live Realtime Sync active.' 
+        : 'Supabase credentials saved. (Offline-First mode active)'
     });
-    setTimeout(() => setActionNotice(null), 4000);
+    setTimeout(() => setActionNotice(null), 4500);
   };
 
-  // Test Cloud connection
-  const handleTestCloudConnection = () => {
-    setCloudTestStatus('testing');
-    setTimeout(() => {
-      setCloudTestStatus('success');
-      setTimeout(() => setCloudTestStatus('idle'), 4000);
-    }, 1200);
+  // Test Supabase Connection
+  const handleTestSupabase = async () => {
+    setSupabaseTestStatus('testing');
+    setSupabaseTestFeedback('');
+    const res = await testSupabaseConnection(supabaseSettings.url, supabaseSettings.anonKey);
+    if (res.success) {
+      setSupabaseTestStatus('success');
+      setSupabaseTestFeedback(res.message);
+    } else {
+      setSupabaseTestStatus('error');
+      setSupabaseTestFeedback(res.message);
+    }
+  };
+
+  // Copy SQL Schema to Clipboard
+  const handleCopySchema = async () => {
+    try {
+      await navigator.clipboard.writeText(SUPABASE_POSTGRES_SCHEMA);
+      setCopiedSchema(true);
+      setTimeout(() => setCopiedSchema(false), 3000);
+      setActionNotice({
+        type: 'success',
+        message: 'PostgreSQL Schema copied to clipboard! Paste into Supabase or Neon SQL Editor.'
+      });
+      setTimeout(() => setActionNotice(null), 4500);
+    } catch {
+      // Fallback
+    }
   };
 
   // Filter records in current store
@@ -292,15 +337,22 @@ export const DatabaseManagerView: React.FC = () => {
           <div className="space-y-1">
             <div className="flex items-center gap-2 flex-wrap">
               <h2 className="text-lg font-bold tracking-tight text-slate-900 dark:text-white">
-                SafeNet Data Governance & Database Engine
+                SafeNet Database Governance & Storage Architecture
               </h2>
-              <span className="px-2 py-0.5 rounded-full text-[10px] font-mono font-semibold bg-emerald-500/10 text-emerald-500 border border-emerald-500/30 flex items-center gap-1">
-                <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
-                IndexedDB v1 Active
-              </span>
+              {isSupabaseConnected ? (
+                <span className="px-2.5 py-0.5 rounded-full text-[10px] font-mono font-semibold bg-emerald-500/10 text-emerald-500 border border-emerald-500/30 flex items-center gap-1.5">
+                  <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-ping" />
+                  Supabase PostgreSQL (Live Realtime)
+                </span>
+              ) : (
+                <span className="px-2.5 py-0.5 rounded-full text-[10px] font-mono font-semibold bg-blue-500/10 text-blue-400 border border-blue-500/30 flex items-center gap-1.5">
+                  <span className="w-1.5 h-1.5 rounded-full bg-blue-400 animate-pulse" />
+                  IndexedDB v1 (Offline-First Active)
+                </span>
+              )}
             </div>
             <p className={`text-xs ${darkMode ? 'text-slate-400' : 'text-slate-600'}`}>
-              Section 26 Compliant • Native IndexedDB Client Storage • Zero-Latency Offline Operations • Cloud Sync Adapter
+              Section 26 Compliant • Supabase & Neon PostgreSQL Compatibility • Native Client ACID Storage • Realtime Multi-Device Sync
             </p>
           </div>
         </div>
@@ -386,38 +438,47 @@ export const DatabaseManagerView: React.FC = () => {
       {/* Database Health & Architecture Metrics (4 Cards) */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 text-xs">
         
-        {/* Card 1: Engine */}
+        {/* Card 1: Primary Database */}
         <div className={`p-4 rounded-2xl border ${darkMode ? 'bg-slate-900/50 border-slate-800' : 'bg-white border-slate-200 shadow-sm'}`}>
           <div className="flex items-center justify-between text-slate-400 mb-1">
-            <span className="text-[11px] font-medium uppercase tracking-wider">Storage Engine</span>
-            <HardDrive className="w-4 h-4 text-blue-500" />
+            <span className="text-[11px] font-medium uppercase tracking-wider">Cloud Engine</span>
+            <Cloud className="w-4 h-4 text-blue-500" />
           </div>
           <div className="text-xl font-bold text-slate-900 dark:text-white">
-            IndexedDB v1
+            {isSupabaseConnected ? 'Supabase Postgres' : 'PostgreSQL Cloud'}
           </div>
-          <div className="flex items-center gap-1.5 mt-1.5 text-emerald-500 font-medium text-[11px]">
-            <span className="w-2 h-2 rounded-full bg-emerald-500 animate-ping" />
-            <span>Client ACID • 0ms Latency</span>
+          <div className="flex items-center gap-1.5 mt-1.5 font-medium text-[11px]">
+            {isSupabaseConnected ? (
+              <span className="text-emerald-500 flex items-center gap-1">
+                <span className="w-2 h-2 rounded-full bg-emerald-500 animate-ping" />
+                <span>Connected & Realtime Active</span>
+              </span>
+            ) : (
+              <span className="text-amber-500 flex items-center gap-1">
+                <span className="w-2 h-2 rounded-full bg-amber-500" />
+                <span>Configurable (Neon / Supabase)</span>
+              </span>
+            )}
           </div>
           <div className="text-[10px] font-mono text-slate-500 mt-1 truncate">
-            safenet_security_db
+            {isSupabaseConnected ? supabaseSettings.url : 'supabase_schema.sql ready'}
           </div>
         </div>
 
-        {/* Card 2: Resilience */}
+        {/* Card 2: Field Resilience */}
         <div className={`p-4 rounded-2xl border ${darkMode ? 'bg-slate-900/50 border-slate-800' : 'bg-white border-slate-200 shadow-sm'}`}>
           <div className="flex items-center justify-between text-slate-400 mb-1">
-            <span className="text-[11px] font-medium uppercase tracking-wider">Field Resilience</span>
+            <span className="text-[11px] font-medium uppercase tracking-wider">Offline Engine</span>
             <ShieldCheck className="w-4 h-4 text-emerald-500" />
           </div>
           <div className="text-xl font-bold text-emerald-500">
-            100% Offline-First
+            IndexedDB v1
           </div>
           <p className="text-[11px] text-slate-400 mt-1.5">
-            Zero cloud dependency for crowd safety & responders.
+            100% offline-first fallback when cellular towers congest.
           </p>
           <div className="text-[10px] font-mono text-slate-500 mt-1">
-            Resistant to mobile network outage
+            safenet_security_db (0ms latency)
           </div>
         </div>
 
@@ -434,24 +495,24 @@ export const DatabaseManagerView: React.FC = () => {
             <span>Quota: {storageEstimate.quota}</span>
           </div>
           <div className="text-[10px] font-mono text-slate-500 mt-1">
-            Persistent browser quota
+            Persistent client quota
           </div>
         </div>
 
-        {/* Card 4: Cross-Node Sync */}
+        {/* Card 4: Replication Sync */}
         <div className={`p-4 rounded-2xl border ${darkMode ? 'bg-slate-900/50 border-slate-800' : 'bg-white border-slate-200 shadow-sm'}`}>
           <div className="flex items-center justify-between text-slate-400 mb-1">
             <span className="text-[11px] font-medium uppercase tracking-wider">Replication Sync</span>
             <Zap className="w-4 h-4 text-amber-500" />
           </div>
           <div className="text-xl font-bold text-blue-500">
-            Broadcast Channel
+            {isSupabaseConnected ? 'WebSockets' : 'Broadcast Channel'}
           </div>
           <div className="flex items-center gap-1.5 mt-1.5 text-slate-400 text-[11px]">
-            <span>Cross-tab & Multi-window</span>
+            <span>{isSupabaseConnected ? 'PostgreSQL Changes Channel' : 'Cross-tab & Multi-window'}</span>
           </div>
           <div className="text-[10px] font-mono text-slate-500 mt-1 truncate">
-            safenet_cross_tab_sync
+            {isSupabaseConnected ? 'safenet_public_realtime' : 'safenet_cross_tab_sync'}
           </div>
         </div>
 
@@ -465,121 +526,158 @@ export const DatabaseManagerView: React.FC = () => {
           <div>
             <h3 className="text-sm font-bold text-slate-900 dark:text-white flex items-center gap-2">
               <Layers className="w-4 h-4 text-blue-500" />
-              <span>Section 26 Database Stores ({SECTION_26_STORES.length})</span>
+              <span>Section 26 Database Stores & PostgreSQL Tables ({SECTION_26_STORES.length})</span>
             </h3>
             <p className="text-xs text-slate-400 mt-0.5">
-              Select an object store to view live records, indexes, and primary key bindings
+              Select an entity store to view live records, indexes, primary keys, and PostgreSQL DDL mapping
             </p>
           </div>
 
-          <button
-            onClick={() => setShowFirebaseConfig(!showFirebaseConfig)}
-            className={`px-3 py-1.5 rounded-xl border text-xs font-medium transition flex items-center gap-1.5 ${
-              showFirebaseConfig 
-                ? 'bg-blue-600 text-white border-blue-500' 
-                : darkMode ? 'border-slate-800 bg-slate-800/60 text-slate-300 hover:bg-slate-800' : 'border-slate-200 bg-slate-100 text-slate-700'
-            }`}
-          >
-            <Cloud className="w-3.5 h-3.5" />
-            <span>{showFirebaseConfig ? 'Hide Cloud Config' : 'Cloud / Firebase Sync Adapter'}</span>
-          </button>
+          <div className="flex items-center gap-2 flex-wrap">
+            <button
+              onClick={handleCopySchema}
+              className={`px-3 py-1.5 rounded-xl border text-xs font-medium transition flex items-center gap-1.5 ${
+                copiedSchema 
+                  ? 'border-emerald-500/40 bg-emerald-500/10 text-emerald-400' 
+                  : darkMode ? 'border-slate-800 bg-slate-800/60 text-slate-300 hover:bg-slate-800' : 'border-slate-200 bg-slate-100 text-slate-700 hover:bg-slate-200'
+              }`}
+              title="Copy complete PostgreSQL DDL schema for Supabase or Neon SQL Editor"
+            >
+              {copiedSchema ? <CheckCheck className="w-3.5 h-3.5 text-emerald-400" /> : <Copy className="w-3.5 h-3.5" />}
+              <span>{copiedSchema ? 'SQL Copied!' : 'Copy SQL Schema (Supabase / Neon)'}</span>
+            </button>
+
+            <button
+              onClick={() => setShowSchemaModal(true)}
+              className={`px-3 py-1.5 rounded-xl border text-xs font-medium transition flex items-center gap-1.5 ${
+                darkMode ? 'border-slate-800 bg-slate-800/60 text-slate-300 hover:bg-slate-800' : 'border-slate-200 bg-slate-100 text-slate-700 hover:bg-slate-200'
+              }`}
+              title="Inspect raw PostgreSQL DDL"
+            >
+              <Code className="w-3.5 h-3.5 text-blue-400" />
+              <span>View SQL DDL</span>
+            </button>
+
+            <button
+              onClick={() => setShowSupabasePanel(!showSupabasePanel)}
+              className={`px-3 py-1.5 rounded-xl border text-xs font-medium transition flex items-center gap-1.5 ${
+                showSupabasePanel 
+                  ? 'bg-blue-600 text-white border-blue-500' 
+                  : darkMode ? 'border-slate-800 bg-slate-800/60 text-slate-300 hover:bg-slate-800' : 'border-slate-200 bg-slate-100 text-slate-700'
+              }`}
+            >
+              <Cloud className="w-3.5 h-3.5" />
+              <span>{showSupabasePanel ? 'Close Cloud Config' : 'Supabase / Neon Sync Settings'}</span>
+            </button>
+          </div>
         </div>
 
-        {/* Cloud Firebase Sync Drawer / Panel */}
-        {showFirebaseConfig && (
-          <div className={`p-4 rounded-2xl border space-y-4 animate-in fade-in ${
-            darkMode ? 'bg-slate-950/60 border-blue-500/30' : 'bg-blue-50/50 border-blue-200'
+        {/* SUPABASE & NEON CLOUD CONFIGURATION PANEL */}
+        {showSupabasePanel && (
+          <div className={`p-5 rounded-2xl border space-y-4 animate-in fade-in ${
+            darkMode ? 'bg-slate-950/70 border-blue-500/30' : 'bg-blue-50/50 border-blue-200'
           }`}>
-            <div className="flex items-center justify-between">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+              <div className="flex items-center gap-2.5">
+                <div className="w-7 h-7 rounded-lg bg-emerald-500/10 border border-emerald-500/20 flex items-center justify-center text-emerald-400">
+                  <Cloud className="w-4 h-4" />
+                </div>
+                <div>
+                  <h4 className="text-xs font-bold text-slate-900 dark:text-white">
+                    Supabase & Neon PostgreSQL Cloud Synchronization
+                  </h4>
+                  <p className="text-[11px] text-slate-400">
+                    Connect an active Supabase or Neon PostgreSQL database instance to enable real-time replication.
+                  </p>
+                </div>
+              </div>
               <div className="flex items-center gap-2">
-                <Cloud className="w-4 h-4 text-blue-500" />
-                <h4 className="text-xs font-bold text-slate-900 dark:text-white">
-                  Google Cloud Firebase / Firestore Mirror
-                </h4>
+                <span className={`text-[10px] font-mono px-2.5 py-1 rounded-full font-bold border ${
+                  isSupabaseConnected 
+                    ? 'bg-emerald-500/10 text-emerald-400 border-emerald-500/30' 
+                    : 'bg-amber-500/10 text-amber-400 border-amber-500/30'
+                }`}>
+                  {isSupabaseConnected ? '● REALTIME POSTGRES ACTIVE' : '○ OFFLINE-FIRST BUFFER (IndexedDB Active)'}
+                </span>
               </div>
-              <span className="text-[10px] font-mono px-2 py-0.5 rounded-full bg-blue-500/10 text-blue-400 border border-blue-500/20">
-                Optional Cloud Replication Layer
-              </span>
             </div>
-            
-            <p className={`text-xs ${darkMode ? 'text-slate-300' : 'text-slate-600'}`}>
-              SafeNet uses <strong>IndexedDB</strong> as its primary, indestructible database for field operations. If public cellular connectivity is available, you can mirror events to Google Cloud Firestore across geographically distributed command centers.
-            </p>
 
-            <form onSubmit={handleSaveFirebase} className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 text-xs">
+            <form onSubmit={handleSaveSupabase} className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-xs">
               <div>
-                <label className="block text-[11px] font-medium text-slate-400 mb-1">Project ID</label>
+                <label className="block text-[11px] font-medium text-slate-400 mb-1">
+                  Supabase Project URL (or Neon REST Endpoint)
+                </label>
                 <input 
                   type="text"
-                  value={firebaseSettings.projectId}
-                  onChange={(e) => setFirebaseSettings({ ...firebaseSettings, projectId: e.target.value })}
+                  value={supabaseSettings.url}
+                  onChange={(e) => setSupabaseSettings({ ...supabaseSettings, url: e.target.value })}
                   className={`w-full px-3 py-2 rounded-xl border text-xs font-mono transition ${
                     darkMode ? 'bg-slate-900 border-slate-700 text-white' : 'bg-white border-slate-300 text-slate-900'
                   }`}
-                  placeholder="safenet-nagpur"
+                  placeholder="https://xyzproject.supabase.co"
                 />
               </div>
 
               <div>
-                <label className="block text-[11px] font-medium text-slate-400 mb-1">Auth Domain</label>
-                <input 
-                  type="text"
-                  value={firebaseSettings.authDomain}
-                  onChange={(e) => setFirebaseSettings({ ...firebaseSettings, authDomain: e.target.value })}
-                  className={`w-full px-3 py-2 rounded-xl border text-xs font-mono transition ${
-                    darkMode ? 'bg-slate-900 border-slate-700 text-white' : 'bg-white border-slate-300 text-slate-900'
-                  }`}
-                  placeholder="safenet-nagpur.firebaseapp.com"
-                />
-              </div>
-
-              <div>
-                <label className="block text-[11px] font-medium text-slate-400 mb-1">API Key (Masked)</label>
+                <label className="block text-[11px] font-medium text-slate-400 mb-1">
+                  Supabase Public Anon API Key
+                </label>
                 <input 
                   type="password"
-                  value={firebaseSettings.apiKey}
-                  onChange={(e) => setFirebaseSettings({ ...firebaseSettings, apiKey: e.target.value })}
+                  value={supabaseSettings.anonKey}
+                  onChange={(e) => setSupabaseSettings({ ...supabaseSettings, anonKey: e.target.value })}
                   className={`w-full px-3 py-2 rounded-xl border text-xs font-mono transition ${
                     darkMode ? 'bg-slate-900 border-slate-700 text-white' : 'bg-white border-slate-300 text-slate-900'
                   }`}
-                  placeholder="AIzaSyA1B2C3D4E5..."
+                  placeholder="eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..."
                 />
               </div>
 
-              <div className="sm:col-span-2 lg:col-span-3 flex items-center justify-between pt-2">
+              {supabaseTestFeedback && (
+                <div className={`sm:col-span-2 p-2.5 rounded-xl border text-xs font-mono ${
+                  supabaseTestStatus === 'success' 
+                    ? 'bg-emerald-500/10 border-emerald-500/30 text-emerald-400' 
+                    : 'bg-rose-500/10 border-rose-500/30 text-rose-400'
+                }`}>
+                  {supabaseTestFeedback}
+                </div>
+              )}
+
+              <div className="sm:col-span-2 flex flex-col sm:flex-row sm:items-center justify-between gap-3 pt-2">
                 <div className="flex items-center gap-2">
-                  <input 
-                    type="checkbox"
-                    id="cloud-enabled"
-                    checked={firebaseSettings.enabled}
-                    onChange={(e) => setFirebaseSettings({ ...firebaseSettings, enabled: e.target.checked })}
-                    className="w-4 h-4 rounded text-blue-600 focus:ring-blue-500"
-                  />
-                  <label htmlFor="cloud-enabled" className="text-xs font-medium cursor-pointer">
-                    Enable Background Cloud Mirroring (when network is reachable)
-                  </label>
+                  <button
+                    type="button"
+                    onClick={handleCopySchema}
+                    className="px-3 py-1.5 rounded-xl border border-blue-500/30 text-blue-400 bg-blue-500/10 hover:bg-blue-500/20 text-xs font-medium transition flex items-center gap-1.5"
+                  >
+                    {copiedSchema ? <CheckCheck className="w-3.5 h-3.5" /> : <Copy className="w-3.5 h-3.5" />}
+                    <span>1-Click Copy Schema for SQL Editor</span>
+                  </button>
+                  <span className="text-[11px] text-slate-500">
+                    Run in Supabase or Neon SQL editor
+                  </span>
                 </div>
 
                 <div className="flex items-center gap-2">
                   <button
                     type="button"
-                    onClick={handleTestCloudConnection}
-                    disabled={cloudTestStatus === 'testing'}
-                    className={`px-3 py-1.5 rounded-xl border text-xs font-medium transition flex items-center gap-1.5 ${
-                      cloudTestStatus === 'success' 
+                    onClick={handleTestSupabase}
+                    disabled={supabaseTestStatus === 'testing'}
+                    className={`px-3.5 py-1.5 rounded-xl border text-xs font-medium transition flex items-center gap-1.5 ${
+                      supabaseTestStatus === 'success' 
                         ? 'border-emerald-500/30 text-emerald-400 bg-emerald-500/10' 
                         : darkMode ? 'border-slate-700 text-slate-300 hover:bg-slate-800' : 'border-slate-300 text-slate-700 hover:bg-slate-100'
                     }`}
                   >
-                    {cloudTestStatus === 'testing' ? (
+                    {supabaseTestStatus === 'testing' ? (
                       <RefreshCw className="w-3.5 h-3.5 animate-spin" />
-                    ) : cloudTestStatus === 'success' ? (
+                    ) : supabaseTestStatus === 'success' ? (
                       <Check className="w-3.5 h-3.5 text-emerald-400" />
                     ) : (
                       <Activity className="w-3.5 h-3.5" />
                     )}
                     <span>
-                      {cloudTestStatus === 'testing' ? 'Testing Handshake...' : cloudTestStatus === 'success' ? 'Adapter Validated' : 'Test Handshake'}
+                      {supabaseTestStatus === 'testing' ? 'Testing Handshake...' : 'Test Connection'}
                     </span>
                   </button>
 
@@ -587,7 +685,7 @@ export const DatabaseManagerView: React.FC = () => {
                     type="submit"
                     className="px-4 py-1.5 rounded-xl bg-blue-600 hover:bg-blue-500 text-white text-xs font-medium transition shadow-sm"
                   >
-                    Save Cloud Config
+                    Save & Reconnect
                   </button>
                 </div>
               </div>
@@ -630,13 +728,17 @@ export const DatabaseManagerView: React.FC = () => {
           darkMode ? 'bg-slate-950/40 border-slate-800' : 'bg-slate-50 border-slate-200'
         }`}>
           <div>
-            <div className="flex items-center gap-2">
+            <div className="flex items-center gap-2 flex-wrap">
               <span className="font-bold text-slate-900 dark:text-white font-mono">
                 Store: {activeStoreMeta.name}
               </span>
               <span className="text-slate-500">•</span>
+              <span className="text-blue-400 font-mono text-[11px]">
+                {activeStoreMeta.pgType}
+              </span>
+              <span className="text-slate-500">•</span>
               <span className="text-slate-400 font-mono text-[11px]">
-                KeyPath: <code className="text-blue-400">"{activeStoreMeta.keyPath}"</code>
+                PK: <code className="text-blue-400">"{activeStoreMeta.keyPath}"</code>
               </span>
             </div>
             <p className={`text-[11px] mt-1 ${darkMode ? 'text-slate-400' : 'text-slate-600'}`}>
@@ -645,7 +747,7 @@ export const DatabaseManagerView: React.FC = () => {
           </div>
 
           <div className="flex items-center gap-1.5 flex-wrap">
-            <span className="text-[11px] text-slate-400">Indexes:</span>
+            <span className="text-[11px] text-slate-400">B-Tree Indexes:</span>
             {activeStoreMeta.indexes.map(idx => (
               <span 
                 key={idx} 
@@ -667,7 +769,7 @@ export const DatabaseManagerView: React.FC = () => {
               type="text"
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              placeholder={`Search records in '${selectedStore}' (ID, text, status)...`}
+              placeholder={`Search records in '${selectedStore}' (ID, description, location, status)...`}
               className={`w-full pl-10 pr-4 py-2 rounded-xl text-xs border transition ${
                 darkMode ? 'bg-slate-900 border-slate-800 text-white placeholder-slate-500' : 'bg-white border-slate-200 text-slate-900 placeholder-slate-400'
               }`}
@@ -706,7 +808,6 @@ export const DatabaseManagerView: React.FC = () => {
                     const status = String(record.status || record.riskLevel || record.availability || record.role || 'ACTIVE');
                     const timestamp = String(record.updatedAt || record.createdAt || record.timestamp || record.lastSeenTime || 'Just now');
                     
-                    // Summarize key attributes depending on store
                     let summary = '';
                     if (record.name) summary += `${record.name} `;
                     if (record.category) summary += `• ${record.category} `;
@@ -750,7 +851,7 @@ export const DatabaseManagerView: React.FC = () => {
                               className={`p-1.5 rounded-lg border transition ${
                                 darkMode ? 'border-slate-800 hover:bg-slate-800 text-slate-300' : 'border-slate-200 hover:bg-slate-100 text-slate-600'
                               }`}
-                              title="Inspect raw JSON document"
+                              title="Inspect raw document"
                             >
                               <Eye className="w-3.5 h-3.5" />
                             </button>
@@ -759,7 +860,7 @@ export const DatabaseManagerView: React.FC = () => {
                               className={`p-1.5 rounded-lg border transition ${
                                 darkMode ? 'border-rose-500/20 hover:bg-rose-500/20 text-rose-400' : 'border-rose-200 hover:bg-rose-50 text-rose-600'
                               }`}
-                              title="Delete record from IndexedDB"
+                              title="Delete record"
                             >
                               <Trash2 className="w-3.5 h-3.5" />
                             </button>
@@ -783,7 +884,7 @@ export const DatabaseManagerView: React.FC = () => {
           <div className="flex items-center gap-2">
             <Activity className="w-4 h-4 text-emerald-400 animate-pulse" />
             <h3 className="text-sm font-bold text-slate-900 dark:text-white">
-              Live Database Transaction Stream (IndexedDB ACID Log)
+              Live Database Transaction Stream (ACID Audit Log)
             </h3>
           </div>
           <span className="text-[10px] font-mono text-slate-400">
@@ -862,6 +963,55 @@ export const DatabaseManagerView: React.FC = () => {
                 className="px-4 py-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-white text-xs font-medium transition"
               >
                 Close Inspector
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* POSTGRESQL SCHEMA MODAL (For Supabase / Neon) */}
+      {showSchemaModal && (
+        <div className="fixed inset-0 z-50 bg-black/70 backdrop-blur-sm flex items-center justify-center p-4">
+          <div className={`max-w-3xl w-full p-6 rounded-3xl border shadow-2xl space-y-4 max-h-[85vh] flex flex-col ${
+            darkMode ? 'bg-slate-900 border-slate-700 text-white' : 'bg-white border-slate-200 text-slate-900'
+          }`}>
+            <div className="flex items-center justify-between pb-3 border-b border-slate-800">
+              <div className="flex items-center gap-2">
+                <Code className="w-5 h-5 text-blue-500" />
+                <h3 className="text-sm font-bold">
+                  PostgreSQL DDL Schema (Supabase & Neon Compatible)
+                </h3>
+              </div>
+              <button 
+                onClick={() => setShowSchemaModal(false)}
+                className="p-1 rounded-lg hover:bg-slate-800 text-slate-400 hover:text-white"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+
+            <div className={`flex-1 overflow-y-auto p-4 rounded-2xl font-mono text-xs ${
+              darkMode ? 'bg-slate-950 text-slate-300 border border-slate-800' : 'bg-slate-900 text-slate-300'
+            }`}>
+              <pre className="whitespace-pre-wrap leading-relaxed">
+                {SUPABASE_POSTGRES_SCHEMA}
+              </pre>
+            </div>
+
+            <div className="flex items-center justify-between pt-2">
+              <button
+                onClick={handleCopySchema}
+                className="px-4 py-2 rounded-xl bg-blue-600 hover:bg-blue-500 text-white text-xs font-medium transition flex items-center gap-2"
+              >
+                {copiedSchema ? <CheckCheck className="w-4 h-4" /> : <Copy className="w-4 h-4" />}
+                <span>{copiedSchema ? 'Copied to Clipboard!' : 'Copy Entire SQL Schema'}</span>
+              </button>
+
+              <button
+                onClick={() => setShowSchemaModal(false)}
+                className="px-4 py-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-white text-xs font-medium transition"
+              >
+                Close
               </button>
             </div>
           </div>

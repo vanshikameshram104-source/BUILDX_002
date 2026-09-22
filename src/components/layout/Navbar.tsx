@@ -21,7 +21,8 @@ export const Navbar: React.FC<NavbarProps> = ({ currentView, onNavigate, onOpenT
     setDarkMode, 
     soundEnabled, 
     setSoundEnabled,
-    notifications 
+    notifications,
+    isSupabaseConnected
   } = useApp();
 
   const [isRoleDropdownOpen, setIsRoleDropdownOpen] = useState(false);
@@ -159,16 +160,23 @@ export const Navbar: React.FC<NavbarProps> = ({ currentView, onNavigate, onOpenT
                 switchRole('admin');
                 onNavigate('control_room');
               }}
-              title="Primary Storage Engine: IndexedDB (safenet_security_db v1). Click to inspect."
+              title={isSupabaseConnected 
+                ? "Cloud Database Engine: Supabase PostgreSQL (Live Realtime Connected). Click to inspect."
+                : "Primary Storage Engine: IndexedDB (safenet_security_db v1). Supabase & Neon PostgreSQL cloud sync ready. Click to inspect."
+              }
               className={`hidden md:flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg border text-xs font-mono transition ${
-                darkMode 
+                isSupabaseConnected
+                  ? 'border-emerald-500/30 bg-emerald-500/10 text-emerald-400'
+                  : darkMode 
                   ? 'border-slate-800 bg-slate-900 text-slate-300 hover:border-blue-500/40' 
                   : 'border-slate-200 bg-slate-50 text-slate-700 hover:border-blue-300'
               }`}
             >
               <Database className="w-3.5 h-3.5 text-blue-500" />
-              <span className="text-[11px] font-medium">DB: IndexedDB</span>
-              <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
+              <span className="text-[11px] font-medium">
+                {isSupabaseConnected ? 'DB: Supabase (Live)' : 'DB: IndexedDB (Offline-Ready)'}
+              </span>
+              <span className={`w-1.5 h-1.5 rounded-full ${isSupabaseConnected ? 'bg-emerald-400 animate-ping' : 'bg-emerald-500 animate-pulse'}`} />
             </button>
 
             {/* Guided Demo Flow Trigger */}

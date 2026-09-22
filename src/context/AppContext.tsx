@@ -9,9 +9,12 @@ import {
 } from '../data/initialData';
 import { audioAlerts } from '../utils/audioAlerts';
 import { safenetDB } from '../services/db/safenetDB';
+import { supabaseDB, testSupabaseConnection, getStoredSupabaseConfig } from '../services/db/supabaseClient';
 
 interface AppContextType {
-  // Database Operations (Section 26)
+  // Database Operations (Section 26 & Supabase/Neon Cloud)
+  isSupabaseConnected: boolean;
+  reconnectSupabase: () => Promise<boolean>;
   exportDatabaseBackup: () => Promise<string>;
   importDatabaseBackup: (jsonString: string) => Promise<boolean>;
   getDatabaseStats: () => Promise<{ users: number; incidents: number; missingPersons: number; responders: number; alerts: number; crowdZones: number }>;
@@ -212,6 +215,51 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     initDatabase();
   }, []);
 
+  // Supabase (PostgreSQL Cloud Engine) Connection & Realtime Sync
+  const [isSupabaseConnected, setIsSupabaseConnected] = useState(false);
+
+  const reconnectSupabase = useCallback(async (): Promise<boolean> => {
+    const config = getStoredSupabaseConfig();
+    if (config.url && config.anonKey && config.url !== 'https://your-project.supabase.co') {
+      const res = await testSupabaseConnection(config.url, config.anonKey);
+      setIsSupabaseConnected(res.success);
+      if (res.success) {
+        const [sbInc, sbMis, sbZones, sbAlerts] = await Promise.all([
+          supabaseDB.incidents.getAll(),
+          supabaseDB.missingPersons.getAll(),
+          supabaseDB.crowdZones.getAll(),
+          supabaseDB.alerts.getAll()
+        ]);
+        if (sbInc && sbInc.length > 0) setIncidents(sbInc);
+        if (sbMis && sbMis.length > 0) setMissingPersons(sbMis);
+        if (sbZones && sbZones.length > 0) setCrowdZones(sbZones);
+        if (sbAlerts && sbAlerts.length > 0) setAlerts(sbAlerts);
+      }
+      return res.success;
+    }
+    setIsSupabaseConnected(false);
+    return false;
+  }, []);
+
+  useEffect(() => {
+    reconnectSupabase();
+
+    const unsubRealtime = supabaseDB.subscribeToChanges(async () => {
+      const [sbInc, sbMis, sbZones, sbAlerts] = await Promise.all([
+        supabaseDB.incidents.getAll(),
+        supabaseDB.missingPersons.getAll(),
+        supabaseDB.crowdZones.getAll(),
+        supabaseDB.alerts.getAll()
+      ]);
+      if (sbInc && sbInc.length > 0) setIncidents(sbInc);
+      if (sbMis && sbMis.length > 0) setMissingPersons(sbMis);
+      if (sbZones && sbZones.length > 0) setCrowdZones(sbZones);
+      if (sbAlerts && sbAlerts.length > 0) setAlerts(sbAlerts);
+    });
+
+    return () => unsubRealtime();
+  }, [reconnectSupabase]);
+
   // Cross-tab Broadcast Channel
   const broadcastCrossTab = useCallback((action: string, payload: unknown) => {
     try {
@@ -334,15 +382,19 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       audioAlerts.playDispatchTone();
     }
 
+    safenetDB.incidents.save(newIncident);
+    supabaseDB.incidents.insertOrUpdate(newIncident);
     broadcastCrossTab('NEW_INCIDENT', newIncident);
     return newIncident;
   };
 
   const updateIncidentStatus = (id: string, status: Incident['status'], responderId?: string) => {
+    let assignedName: string | undefined;
     setIncidents(prev => {
       const updated = prev.map(inc => {
         if (inc.id === id) {
           const resp = responderId ? responders.find(r => r.id === responderId) : undefined;
+          assignedName = resp?.name;
           return {
             ...inc,
             status,
@@ -357,6 +409,9 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       broadcastCrossTab('UPDATE_INCIDENTS', updated);
       return updated;
     });
+
+    safenetDB.incidents.updateStatus(id, status, responderId, assignedName);
+    supabaseDB.incidents.updateStatus(id, status, responderId, assignedName);
 
     if (status === 'RESOLVED') {
       audioAlerts.playSuccessTone();
@@ -418,6 +473,8 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     };
     setNotifications(prev => [newNotif, ...prev]);
 
+    safenetDB.missingPersons.save(newPerson);
+    supabaseDB.missingPersons.insertOrUpdate(newPerson);
     audioAlerts.playEmergencyAlert();
     broadcastCrossTab('NEW_MISSING', newPerson);
     return newPerson;
@@ -429,6 +486,9 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       broadcastCrossTab('UPDATE_MISSING', updated);
       return updated;
     });
+
+    safenetDB.missingPersons.updateStatus(id, status);
+    supabaseDB.missingPersons.updateStatus(id, status);
 
     if (status === 'FOUND' || status === 'CLOSED') {
       audioAlerts.playSuccessTone();
@@ -474,6 +534,9 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       availability,
       zone: zone || r.zone
     } : r));
+
+    safenetDB.responders.updateAvailability(id, availability, zone);
+    supabaseDB.responders.updateAvailability(id, availability, zone);
   };
 
   // Crowd zone density
@@ -500,6 +563,9 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       broadcastCrossTab('UPDATE_ZONES', updated);
       return updated;
     });
+
+    safenetDB.crowdZones.updateDensity(zoneId, newDensity);
+    supabaseDB.crowdZones.updateDensity(zoneId, newDensity);
   };
 
   const approveCrowdRecommendation = (zoneId: string) => {
@@ -532,6 +598,8 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       read: false
     }, ...prev]);
 
+    safenetDB.alerts.save(newAlert);
+    supabaseDB.alerts.insert(newAlert);
     audioAlerts.playEmergencyAlert();
     broadcastCrossTab('NEW_ALERT', newAlert);
   };
@@ -555,6 +623,8 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       read: false
     }, ...prev]);
 
+    safenetDB.alerts.save(newAlert);
+    supabaseDB.alerts.insert(newAlert);
     audioAlerts.playEmergencyAlert();
     broadcastCrossTab('NEW_ALERT', newAlert);
     return newAlert;
@@ -839,6 +909,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
   return (
     <AppContext.Provider value={{
+      isSupabaseConnected, reconnectSupabase,
       exportDatabaseBackup, importDatabaseBackup, getDatabaseStats,
       currentView, setCurrentView, navigateTo,
       darkMode, setDarkMode,
