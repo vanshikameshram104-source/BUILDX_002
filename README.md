@@ -3,7 +3,7 @@
 
 > **"One Network. One Response. Safer Communities."**  
 > *Deployment Scenario: Dhammachakra Pravartan Din at Deekshabhoomi, Nagpur*
-
+live demonstration : https://securitymanagement0.netlify.app/
 ---
 
 ## 📌 Project Overview
