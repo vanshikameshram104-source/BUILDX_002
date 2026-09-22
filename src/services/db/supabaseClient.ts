@@ -20,8 +20,19 @@ export const getStoredSupabaseConfig = (): SupabaseConfig => {
   }
 
   // Fallback to environment variables if available
-  const envUrl = ((import.meta as any).env?.VITE_SUPABASE_URL || '').trim();
-  const envKey = ((import.meta as any).env?.VITE_SUPABASE_ANON_KEY || '').trim();
+  const envMeta = (import.meta as any).env || {};
+  const envUrl = (
+    envMeta.VITE_SUPABASE_URL ||
+    envMeta.NEXT_PUBLIC_SUPABASE_URL ||
+    ''
+  ).trim();
+  const envKey = (
+    envMeta.VITE_SUPABASE_ANON_KEY ||
+    envMeta.VITE_SUPABASE_PUBLISHABLE_KEY ||
+    envMeta.NEXT_PUBLIC_SUPABASE_ANON_KEY ||
+    envMeta.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY ||
+    ''
+  ).trim();
 
   return {
     url: envUrl || 'https://your-project.supabase.co',
