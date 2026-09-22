@@ -2,153 +2,244 @@
 ### Real-Time Public Safety & Emergency Coordination Platform
 
 > **"One Network. One Response. Safer Communities."**  
-> *Deployment Scenario: Dhammachakra Pravartan Din at Deekshabhoomi, Nagpur*
-live demonstration : https://securitymanagement0.netlify.app/
+> *Deployment Benchmark: Dhammachakra Pravartan Din (500,000+ Attendees), Deekshabhoomi, Nagpur*
+
+🌐 **Live Application Deployment:** [https://securitymanagement0.netlify.app/](https://securitymanagement0.netlify.app/)  
+📦 **Source Code Repository:** [https://github.com/vanshikameshram104-source/BUILDX_002](https://github.com/vanshikameshram104-source/BUILDX_002)
+
 ---
 
-## 📌 Project Overview
+## 📌 Executive Summary
 
-**SafeNet** is a unified real-time public safety command and citizen coordination platform designed for large public gatherings, cultural festivals, and crowded urban spaces.
+**SafeNet** is an enterprise-grade, real-time public safety command and emergency coordination platform engineered for massive public gatherings, religious pilgrimages, smart cities, and university campuses. 
 
-During massive events (such as 500,000+ attendees at Deekshabhoomi, Nagpur), public safety faces severe challenges:
-- Delayed missing-person reporting and chaotic manual search records
-- Cellular network congestion rendering cloud-only tools unreliable
-- Paper-based, scattered incident communication between police and volunteer marshals
-- Lack of real-time crowd surge detection leading to bottleneck stampedes
-- Hesitant citizen reporting and lack of transparent status tracking
+During large-scale events, conventional emergency response mechanisms break down due to:
+* **Delayed Missing Person Reporting** and chaotic manual paper lookout records.
+* **Cellular Carrier Network Saturation** making cloud-only applications crash or freeze.
+* **Fragmented Communication** between police officers, medical teams, and volunteer marshals.
+* **Unmonitored Bottlenecks** causing sudden crowd surges and stampede risks.
+* **Hesitant Citizen Reporting** due to complex forms and lack of feedback tracking.
 
-SafeNet unites **Citizens**, **Families**, **Volunteer Marshals**, **Police Officers**, and **Central Command HQ** into a single, cohesive, offline-resilient digital safety network.
+SafeNet unifies **Citizens & Students**, **Families**, **Volunteer Marshals**, **Police Personnel**, and the **Central Security Control Room** into a single, high-speed, offline-resilient digital safety network.
+
+---
+
+## 🤖 Chatbase AI Security Assistant (Integrated 24/7 Chatbot)
+
+SafeNet features a 24/7 AI-powered safety and navigation assistant powered by **Chatbase**, accessible as a floating widget across the entire platform:
+
+* **Direct Embed Integration:** Configured via Chatbase (`embed.min.js`, Bot ID: `SldNpHpxXX2byxv6Yf4g2`).
+* **Emergency Guidance:** Instant step-by-step guidance for citizens, students, and attendees in high-stress situations.
+* **Natural Language Queries:**
+  * *"Where is the closest medical first aid desk from Exit B?"*
+  * *"How do I report a lost child or elderly family member?"*
+  * *"What is the safest evacuation route if Gate 2 is congested?"*
+  * *"How does the 1-Tap SOS feature share my location?"*
+* **Multilingual & Accessible:** Ready to assist multi-lingual event attendees with instant conversational responses.
+
+---
+
+## 🗄️ Hybrid Database Architecture (Supabase PostgreSQL + IndexedDB)
+
+SafeNet is architected with a **Dual-Tier Hybrid Database Engine** providing real-time cloud synchronization while remaining **100% operational offline** during cellular blackouts:
+
+```
+┌─────────────────────────────────────────────────────────────┐
+│                    SAFENET APPLICATION                      │
+└──────────────┬───────────────────────────────┬──────────────┘
+               │                               │
+       (Dual-Write Replication)        (Live WebSocket Sync)
+               ▼                               ▼
+┌──────────────────────────────┐ ┌─────────────────────────────┐
+│   Native IndexedDB Engine    │ │   Supabase PostgreSQL Cloud  │
+│  (safenet_security_db v1)    │ │ (PostgreSQL 15 + RLS + WS)  │
+├──────────────────────────────┤ ├─────────────────────────────┤
+│ • 0ms Local Read/Write       │ │ • Live Cloud Sync           │
+│ • 100% Offline-First         │ │ • Realtime Subscriptions    │
+│ • 7 Section 26 Object Stores │ │ • Row Level Security (RLS)  │
+│ • ACID Transaction Logs      │ │ • Neon DDL Compatible       │
+│ • Zero Network Dependency    │ │ • Remote WAN Replication    │
+└──────────────────────────────┘ └─────────────────────────────┘
+```
+
+### 1. Supabase PostgreSQL Cloud Engine
+* **Hosted Cloud Instance:** Live PostgreSQL database cluster connected via `@supabase/supabase-js`.
+* **7 Normalized Core Relational Tables:**
+  1. `users` — Authentication, roles, badge numbers, sector assignments, and coordinates.
+  2. `incidents` — Real-time emergency reports with geocodes, categories, priority triage, and assigned units.
+  3. `missing_persons` — Missing children/elderly records, photos, clothing, and AI biometric match vectors.
+  4. `responders` — Police, medical personnel, and volunteer marshals with live availability and sector assignments.
+  5. `alerts` — Zone-targeted emergency broadcasts, evacuation advisories, and audio siren triggers.
+  6. `crowd_zones` — Real-time sensor density percentages, capacity limits, and crowd compaction risk levels.
+  7. `safety_journeys` — Live GPS route monitoring, waypoints, and automated deviation countdown timers.
+* **Row-Level Security (RLS):** Policies enforcing least-privilege data access per role (Citizens, Police, Marshals, Admins).
+* **Supabase Realtime:** Instant WebSocket broadcast of new incidents, missing persons, and crowd alerts across all connected devices.
+
+### 2. Client-Side IndexedDB Engine (`safenet_security_db`)
+* Built with native browser `idb` storage. If cellular towers fail due to 500,000+ attendees transmitting data simultaneously, SafeNet continues reading and writing with **0ms latency**.
+* **Automatic Queue & Reconnect:** When internet reconnects, queued records synchronize seamlessly with Supabase.
+* **Disaster Recovery Console:** Located in the Control Room with 1-click JSON backup export and transactional restore.
+
+---
+
+## 🛡️ Security Challenge Scenarios (Evaluation Suite)
+
+SafeNet features a dedicated **"Security Challenge Scenarios"** evaluation section (`/challenges`) built for cybersecurity hackathons, technical juries, and defense evaluations.
+
+Each scenario provides an interactive, safe demo sandbox:
+
+### 1. Live Cyber Attack Simulation (Threat Severity: CRITICAL)
+* **Problem:** Active multi-vector cyberattack involving simulated ransomware, phishing, or unauthorized ingress on Port 443.
+* **Visual 5-Step Attack-Response Flow:**
+  $$\text{ATTACK DETECTED} \longrightarrow \text{THREAT IDENTIFIED} \longrightarrow \text{COMPROMISED COMPONENT ISOLATED} \longrightarrow \text{INCIDENT CONTAINED} \longrightarrow \text{SYSTEM RESTORED}$$
+* **Interactive Controls:** **"Simulate Attack"** runs real-time MITRE ATT&CK mitigation with live SOC terminal telemetry logging and clean rollback verification.
+
+### 2. Zero Trust Implementation Challenge (Threat Severity: HIGH)
+* **Problem:** Government cybersecurity mandate requiring continuous identity, device, and policy validation before accessing system assets.
+* **7-Step Zero Trust Pipeline:**
+  $$\text{USER} \longrightarrow \text{IDENTITY VERIFICATION} \longrightarrow \text{MFA} \longrightarrow \text{DEVICE VERIFICATION} \longrightarrow \text{POLICY CHECK} \longrightarrow \text{LEAST-PRIVILEGE ACCESS} \longrightarrow \text{RESOURCE}$$
+* **Core Indicators:** Multi-Factor Authentication, Role-Based Access Control, Continuous Verification, Least Privilege, Device Trust, and Session Monitoring.
+* **Interactive Tester:** Real-time token validation and geofence verification across Police Dispatcher and Citizen personas.
+
+### 3. Critical Infrastructure Protection Challenge (Threat Severity: CRITICAL)
+* **Problem:** Coordinated attacks targeting smart city municipal digital infrastructure during massive public events.
+* **Monitored Municipal Nodes:** `POWER GRID`, `WATER SUPPLY`, `TRANSPORTATION`, `PUBLIC SERVICES`, `COMMUNICATION NETWORK`.
+* **Resilience Workflow:** Threat Detection $\rightarrow$ Infrastructure Monitoring $\rightarrow$ Threat Isolation $\rightarrow$ Service Protection $\rightarrow$ Recovery.
+* **Interactive Controls:** **"Simulate Grid Threat"** triggers automated SCADA air-gap isolation and auxiliary microgrid failover with 1-click grid restoration.
+
+### 4. High-Traffic & DDoS Defense Challenge (Threat Severity: CRITICAL)
+* **Problem:** Distributed Denial-of-Service flood exceeding millions of requests per second intended to overwhelm incident reporting.
+* **6-Stage Traffic Pipeline:**
+  $$\text{INCOMING TRAFFIC} \longrightarrow \text{TRAFFIC ANALYSIS} \longrightarrow \text{MALICIOUS TRAFFIC DETECTION} \longrightarrow \text{TRAFFIC FILTERING} \longrightarrow \text{LOAD BALANCING} \longrightarrow \text{LEGITIMATE USERS}$$
+* **Interactive Controls:** **"Run Traffic Simulation"** tests an instant 1.25M req/sec flood, showing edge proof-of-work challenge filtering and 100.00% legitimate SOS uptime.
+
+---
+
+## 📍 Student & Citizen Location Tracking Architecture
+
+SafeNet provides privacy-conscious, battery-optimized location awareness:
+
+```
+┌───────────────────────────┐      High-Accuracy Geolocation API
+│   Student's Smartphone    │ <───────────────────────────────────────────
+│   (Browser: Chrome/Safari)│       (GPS + Cell Triangulation + Wi-Fi)
+└─────────────┬─────────────┘
+              │  User Consent: "Allow SafeNet to access your location"
+              ▼
+    navigator.geolocation.getCurrentPosition()
+    navigator.geolocation.watchPosition()
+              │
+              │  Captures: Lat (21.1290° N), Lng (79.0660° E), Accuracy (±4m)
+              ▼
+┌───────────────────────────┐
+│     SafeNet Frontend      │ ──> Encrypted HTTPS & WebSockets
+└─────────────┬─────────────┘
+              ▼
+┌───────────────────────────────────────────────────────────┐
+│  • Tactical Security Map (Nagpur Grid)                    │
+│  • Automated Campus Geofencing (e.g. Sector 1, Main Gate) │
+│  • Safety Journey: Real-Time Route Deviation Detection    │
+│  • Emergency SOS: 1-Tap Beacon Dispatch                   │
+└───────────────────────────────────────────────────────────┘
+```
+
+1. **Emergency SOS (1-Tap Beacon):** Transmits exact GPS coordinates to the Control Room, rings an audible siren on patrol terminals, and plots walking directions for nearby officers.
+2. **Safety Journey Tracking:** Tracks student movement when traveling alone at night. If unauthorized path deviation or stoppage is detected, an automated 45-second safety timer is triggered before auto-alerting contacts and security.
+3. **Campus & Sector Geofencing:** Matches raw GPS coordinates against polygonal crowd zones (e.g. *"Hostel Block C"*, *"Gate 2 Exit"*).
+4. **AI Face Biometric Matching:** CCTV surveillance feed analysis with similarity scoring (e.g. 91% match) and mandatory officer-in-the-loop verification.
 
 ---
 
 ## 👥 Five Unified Stakeholder Experiences
 
-1. **Citizen Portal (`CitizenView`)**
-   - Clean, human-centered *"How can we help?"* interface.
-   - **4 Primary Action Cards**: Report Incident, Report Missing Person, 1-Tap Emergency SOS, Safety Journey.
-   - **Category-First Incident Reporting**: Captures chain snatching, suspicious activity, medical emergencies, fires, and harassment with GPS coordinates.
-   - **Safety Journey Tracker**: Destination waypoint tracking with automatic route deviation detection and 45-second auto-alert countdown.
-   - **Nearby Tactical Safety Map**: Live GPS pulse with distances to nearest exits, police posts, and medical desks.
-
-2. **Family Member Portal (`FamilyDashboard`)**
-   - **4-Step Missing Child/Elderly Wizard**:
-     $$\text{Basic Details} \longrightarrow \text{Appearance \& Photos} \longrightarrow \text{Last Seen Location} \longrightarrow \text{Review \& Transmit}$$
-   - **5-Stage Live Case Tracker**:
-     $$\text{REPORTED} \longrightarrow \text{SEARCHING} \longrightarrow \text{POSSIBLE MATCH} \longrightarrow \text{FOUND} \longrightarrow \text{CLOSED}$$
-   - **Sensitive Contact Privacy Shield**: Protects contact numbers and medical history from unauthorized public access.
-
-3. **Volunteer Sector Marshals (`VolunteerDashboard`)**
-   - Instant duty status toggle: `Available` • `On Scene` • `Offline`.
-   - Priority and distance-sorted lookout feeds.
-   - **4-Stage Response Lifecycle**: `[Accept]` → `[Responding]` → `[On Scene]` → `[Resolved]`.
-
-4. **Police Tactical Dashboard (`PoliceDashboard`)**
-   - Triage queue with priority overrides and unit assignments.
-   - **AI CCTV Biometric Matcher**: Facial similarity matching against surveillance feeds with confidence scores (e.g. 91%) and mandatory human verification.
-   - Encrypted UHF radio net log.
-
-5. **Central Control Room HQ (`ControlRoomView`)**
-   - **8 Command Tabs**:
-     - **Overview**: Central tactical map of Deekshabhoomi with compact incident stream and Exit B crowd surge alerts.
-     - **Live Map**: Fullscreen tactical grid with layered filters (Incidents, Missing Persons, Responders, Crowd Zones).
-     - **Cases**: Unified incident and missing person triage.
-     - **Crowd AI**: Simulated YOLOv8 CCTV feeds with crowd density heatmaps and automated surge diversion recommendations.
-     - **Responders**: Live GPS positions and availability roster of all field personnel.
-     - **Broadcast**: Geofenced 4-step emergency broadcast console (`Select Zone` → `Target Audience` → `Write Message` → `Preview` → `Transmit`).
-     - **Analytics**: Real-time response times, crowd compaction curves, and case resolution rates.
-     - **Database (IndexedDB)**: Section 26 data governance console with store browsing, JSON document inspection, disaster recovery backups, and ACID transaction audit streaming.
-
----
-
-## 🗄️ Database Architecture (Section 26 & Section 36)
-
-SafeNet uses a **high-resilience, offline-first dual-tier storage engine**:
-
-### Primary Engine: Native IndexedDB v1 (`safenet_security_db`)
-- **Congestion-Proof**: Runs directly client-side with **0ms query latency**—unaffected by mobile network congestion or carrier tower failure during massive events.
-- **ACID Transactions**: Full transactional safety across all operations.
-- **7 Section 26 Object Stores**:
-  - `users` (Accounts, Roles, Session States)
-  - `incidents` (Emergency dispatches, Status pipelines, Geocodes)
-  - `missing_persons` (Lost child/elderly records, Biometric vectors)
-  - `responders` (Field marshals, Police units, Sector allocations)
-  - `alerts` (Zone-targeted emergency broadcasts, Evacuation advisories)
-  - `crowd_zones` (Sensor density percentages, Bottleneck risks)
-  - `safety_journeys` (Solo attendee route tracking, Deviation alerts)
-
-### Secondary Layer: Cloud Firestore Sync Adapter
-- Configurable adapter (`src/services/db/firebaseConfig.ts`) allowing WAN cloud replication across distributed command rooms when internet connectivity is available.
-
-### Enterprise Data Governance & Disaster Recovery
-- **One-Click Backup Export**: Downloads complete JSON dump with platform version and timestamp.
-- **Transactional Backup Import**: Restores all 7 stores from backup files with schema validation.
-- **Live ACID Transaction Stream**: Real-time audit log tracking every `READ`, `WRITE`, `DELETE`, `RESET`, `BACKUP`, and `RESTORE` operation.
-
----
-
-## 🚀 Getting Started
-
-### Prerequisites
-- Node.js (v18 or higher recommended)
-- npm or pnpm
-
-### Installation
-
-```bash
-# Clone repository
-git clone <your-repo-url>
-cd "security management"
-
-# Install dependencies
-npm install
-
-# Start local development server
-npm run dev
-```
-
-The application will be running at `http://localhost:5173`.
-
-### Production Build
-
-```bash
-# Type check and build optimized bundle
-npm run build
-
-# Preview production build locally
-npm run preview
-```
-
----
-
-## 🧪 Evaluator & Demonstration Tour
-
-SafeNet includes a built-in **11-Step Guided Demo Flow** and a floating **Quick Sim Controls** bar:
-1. Family reports missing 6-year-old child near Exit B.
-2. Case ID `MSP-2026-00124` generated and synchronized across tabs in real time.
-3. Volunteer marshals receive instant lookout alerts.
-4. AI crowd sensors detect 87% density surge at Exit B.
-5. Automated predictive risk alert recommends diversion to Exit C.
-6. Control Room transmits targeted geofenced broadcast.
-7. Citizen reports chain snatching at Main Gate.
-8. Police officer dispatched; incident lifecycle progresses to `RESOLVED`.
-9. Safety Journey detects unauthorized route deviation with 45s countdown.
-10. CCTV camera registers 91% biometric match with mandatory officer verification.
-11. Section 26 Database Governance: Inspect live IndexedDB stores, run JSON backups, and review real-time ACID logs.
+1. **Citizen Portal (`CitizenView`):**
+   * Instant incident reporting (harassment, medical, theft, fire) with auto-captured GPS.
+   * Safety Journey route tracking with route deviation alerts.
+   * Nearby emergency infrastructure map (medical stations, water desks, police posts).
+2. **Family Portal (`FamilyDashboard`):**
+   * 4-step Missing Person registration wizard with photo upload and clothing description.
+   * Live 5-stage case lifecycle tracker (`REPORTED` $\rightarrow$ `SEARCHING` $\rightarrow$ `POSSIBLE MATCH` $\rightarrow$ `FOUND` $\rightarrow$ `CLOSED`).
+3. **Volunteer Marshal Portal (`VolunteerDashboard`):**
+   * Duty availability switch (`Available`, `On Scene`, `Offline`).
+   * Sector-based task assignments and localized crowd assistance queue.
+4. **Police Tactical Dashboard (`PoliceDashboard`):**
+   * Law enforcement triage feed with priority escalation controls.
+   * AI facial biometric verification interface.
+   * Unit dispatch and encrypted operational log.
+5. **Central Control Room HQ (`ControlRoomView`):**
+   * Real-time tactical map with interactive layers.
+   * AI Crowd Monitoring with simulated YOLOv8 computer vision feeds and surge warnings.
+   * 4-step targeted Emergency Broadcast transmitter.
+   * Current Security Challenge benchmark card with 1-click simulation launcher.
+   * Section 26 Database Manager with live Supabase ping latency and backup tools.
 
 ---
 
 ## 🛠️ Technology Stack
 
-- **Framework**: React 19 + TypeScript
-- **Bundler & Tooling**: Vite, Oxlint
-- **Styling**: Tailwind CSS, Lucide Icons
-- **Client Storage Engine**: IndexedDB (via `idb` v8)
-- **Cloud Adapter**: Firebase Firestore configuration adapter
-- **Real-Time Replication**: Browser `BroadcastChannel` API (`safenet_cross_tab_sync`)
-- **Audio Synthesizer**: Web Audio API sirens and chimes
+| Layer | Technologies |
+| :--- | :--- |
+| **Frontend Framework** | React 19, TypeScript (Strict Mode) |
+| **Styling & Theme** | Tailwind CSS v4, Lucide Icons, Custom Cybersecurity Glassmorphism |
+| **Build & Bundler** | Vite 8, Rollup, Oxlint |
+| **AI Chatbot** | Chatbase Embedded Intelligent Assistant |
+| **Cloud Database** | Supabase PostgreSQL (Compatible with Neon SQL), Supabase Realtime |
+| **Offline Storage** | IndexedDB (via `idb` v8) with cross-tab BroadcastChannel sync |
+| **Mapping & GIS** | Interactive Tactical Grid with Leaflet / SVG Geofencing |
+| **Audio Engine** | Web Audio API Synthetic Sirens and Emergency Chimes |
+| **Hosting & CI/CD** | Netlify (Continuous Deployment from GitHub `main` branch) |
+
+---
+
+## 🚀 Getting Started Locally
+
+### Prerequisites
+* [Node.js](https://nodejs.org/) (v18 or higher)
+* `npm` or `pnpm`
+
+### Installation & Run
+
+```bash
+# 1. Clone repository
+git clone https://github.com/vanshikameshram104-source/BUILDX_002.git
+cd BUILDX_002
+
+# 2. Install dependencies
+npm install
+
+# 3. Configure Environment Variables (Optional - runs offline by default!)
+# Create a .env file with your Supabase credentials:
+VITE_SUPABASE_URL=https://your-project.supabase.co
+VITE_SUPABASE_ANON_KEY=your-supabase-anon-key
+
+# 4. Start Development Server
+npm run dev
+```
+
+The application will be accessible at: `http://localhost:5173`.
+
+### Production Build
+
+```bash
+# Run type check and create production bundle
+npm run build
+
+# Preview build locally
+npm run preview
+```
+
+---
+
+## 🌐 Live Deployment on Netlify
+
+SafeNet is deployed live on Netlify with automated continuous integration:
+* **Production URL:** [https://securitymanagement0.netlify.app/](https://securitymanagement0.netlify.app/)
+* **Build Command:** `npm run build`
+* **Publish Directory:** `dist`
 
 ---
 
 ## 📄 License
 
-Developed for public safety coordination and emergency response management.
+Developed for public safety management, community protection, and municipal emergency coordination.
+All rights reserved © 2026 SafeNet Platform Team.
