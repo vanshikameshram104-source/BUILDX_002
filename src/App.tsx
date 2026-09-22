@@ -7,6 +7,7 @@ import { ControlRoomView } from './components/controlRoom/ControlRoomView';
 import { FamilyDashboard } from './components/family/FamilyDashboard';
 import { VolunteerDashboard } from './components/volunteer/VolunteerDashboard';
 import { PoliceDashboard } from './components/police/PoliceDashboard';
+import { SecurityChallengesView } from './components/challenges/SecurityChallengesView';
 import { GuidedTourModal } from './components/demo/GuidedTourModal';
 import { DemoBar } from './components/demo/DemoBar';
 import { Shield } from 'lucide-react';
@@ -37,6 +38,9 @@ const MainLayout: React.FC = () => {
             }}
             onOpenReport={() => {
               navigateTo('citizen', 'citizen');
+            }}
+            onOpenChallenges={() => {
+              navigateTo('challenges');
             }}
           />
           {/* Subtle Demo Tour Trigger on Landing */}
@@ -70,6 +74,7 @@ const MainLayout: React.FC = () => {
             {currentView === 'volunteer' && <VolunteerDashboard />}
             {currentView === 'police' && <PoliceDashboard />}
             {currentView === 'control_room' && <ControlRoomView />}
+            {currentView === 'challenges' && <SecurityChallengesView />}
           </main>
 
           {/* Minimal Floating Demo Bar Toggle */}

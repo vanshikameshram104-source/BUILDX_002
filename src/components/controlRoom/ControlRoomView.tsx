@@ -131,8 +131,16 @@ export const ControlRoomView: React.FC = () => {
           ))}
         </div>
 
-        {/* Quick Broadcast button */}
+        {/* Top Actions */}
         <div className="flex items-center gap-2">
+          <button
+            onClick={() => navigateTo('challenges')}
+            className="px-3 py-1.5 rounded-lg border border-blue-500/30 bg-blue-500/10 hover:bg-blue-500/20 text-blue-400 text-xs font-medium transition flex items-center gap-1.5 shadow-sm"
+          >
+            <Shield className="w-3.5 h-3.5" />
+            <span>Security Challenges</span>
+          </button>
+
           <button
             onClick={() => setIsBroadcastModalOpen(true)}
             className="px-3.5 py-1.5 rounded-lg bg-blue-600 hover:bg-blue-500 text-white text-xs font-medium transition flex items-center gap-1.5 shadow-sm"
@@ -142,6 +150,9 @@ export const ControlRoomView: React.FC = () => {
           </button>
         </div>
       </div>
+
+      {/* CURRENT CHALLENGE INTEGRATION CARD (Competition Evaluation) */}
+      <CurrentChallengeCard onNavigateToChallenges={() => navigateTo('challenges')} />
 
       {/* CRITICAL SURGE ALERT BANNER (Exit B 87% crowd surge notification with 1-click diversion) */}
       {surgeZone && (

@@ -149,6 +149,21 @@ export const Navbar: React.FC<NavbarProps> = ({ currentView, onNavigate, onOpenT
             >
               Control Room
             </button>
+
+            <button
+              onClick={() => onNavigate('challenges')}
+              className={`px-3 py-1.5 rounded-lg transition font-medium flex items-center gap-1.5 ${
+                currentView === 'challenges'
+                  ? 'bg-blue-600 text-white font-bold shadow-sm'
+                  : darkMode 
+                  ? 'text-cyan-400 hover:text-white hover:bg-slate-800' 
+                  : 'text-blue-600 hover:text-blue-900 hover:bg-blue-50'
+              }`}
+            >
+              <Shield className="w-3.5 h-3.5" />
+              <span>Challenges</span>
+              <span className="w-1.5 h-1.5 rounded-full bg-rose-500 animate-pulse" />
+            </button>
           </div>
 
           {/* Right Utilities */}
